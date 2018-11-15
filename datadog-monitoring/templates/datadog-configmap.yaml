@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ template "datadog.fullname" . }}
+data:
+  datadog.yaml: |
+    listeners:
+      - name: kubelet
+    config_providers:
+      - name: kubelet
+        polling: true
+    logs_config:
+      dev_mode_no_ssl: true
+  logs-config: |-
+    logs:
+      - type: docker
+        source: docker-config-map
+        sourcecategory: aug-1
+        service: docker
+        tags: aug
+

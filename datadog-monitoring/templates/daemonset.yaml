@@ -1,0 +1,175 @@
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  name: {{ template "datadog.fullname" . }}
+  labels:
+   app: "{{ template "datadog.fullname" . }}"
+   chart: "{{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}"
+   release: {{ .Release.Name | quote }}
+   heritage: {{ .Release.Service | quote }}
+
+spec:
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: "{{ template "datadog.fullname" . }}"
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: {{ template "datadog.fullname" . }}
+      name: {{ template "datadog.fullname" . }}
+      annotations:
+        checksum/autoconf-config: {{ tpl (toYaml .Values.datadog.autoconf) . | sha256sum }}
+        checksum/confd-config: {{ tpl (toYaml .Values.datadog.confd) . | sha256sum }}
+        checksum/checksd-config: {{ tpl (toYaml .Values.datadog.checksd) . | sha256sum }}
+    spec:
+      {{- if .Values.daemonset.useHostNetwork }}
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+      {{- end }}
+      {{- if .Values.image.pullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.image.pullSecrets | indent 8 }}
+      {{- end }}
+      containers:
+      - name: {{ default .Chart.Name .Values.datadog.name }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        resources:
+{{ toYaml .Values.datadog.resources | indent 12 }}
+        ports:
+        - containerPort: 8125
+          {{- if .Values.daemonset.useHostPort }}
+          hostPort: 8125
+          {{- end }}
+          name: dogstatsdport
+          protocol: UDP
+          {{- if .Values.datadog.apmEnabled }}
+        - containerPort: 8126
+          {{- if .Values.daemonset.useHostPort }}
+          hostPort: 8126
+          {{- end }}
+          name: traceport
+          protocol: TCP
+          {{- end }}
+        env:
+         - name: DD_LOGS_ENABLED
+           value: "{{ .Values.datadog.LogsEnabled}}"
+         - name: DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL
+        #   value: "false"
+            value: "true"
+         - name: DD_API_KEY
+           valueFrom:
+             secretKeyRef:
+               key: api-key
+               name: {{ template "datadog.apiSecretName" . }}
+         - name: DD_COLLECT_KUBERNETES_EVENTS
+           value: "true"
+         - name: DD_LEADER_ELECTION
+           value: "{{ .Values.datadog.leaderElection }}"
+          {{- if .Values.datadog.leaderLeaseDuration }}
+         - name: DD_LEADER_LEASE_DURATION
+           value: {{ .Values.datadog.leaderLeaseDuration | quote }}
+          {{- end }}
+        # - name: DD_KUBELET_TLS_VERIFY
+        #   value: "false"
+       #  - name: DD_LOGS_CONFIG_DD_URL
+       #    value: "{{ .Values.datadog.proxy }}"
+       #  - name: DD_LOGS_CONFIG_DD_PORT
+       #    value: "10514"
+         - name: KUBERNETES
+           value: "true"
+         - name: DD_KUBERNETES_COLLECT_METADATA_TAGS
+           value: "true"
+        # - name: KUBERNETES_COLLECT_SERVICE_TAGS
+        #   value: "app"
+         - name: DD_APM_ENABLED
+           value: "true"
+         - name: DOGSTATSD_HOST_IP
+           valueFrom:
+             fieldRef:
+              fieldPath: status.hostIP
+         - name: DD_CHECK_RUNNERS
+           value: "2"
+        {{- if semverCompare "^1.7-0" .Capabilities.KubeVersion.GitVersion }}
+         - name: DD_KUBERNETES_KUBELET_HOST
+           valueFrom:
+            fieldRef:
+     #        apiVersion: v1
+             fieldPath: status.hostIP
+        {{- end }}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        {{- if .Values.datadog.logsEnabled }}
+         - name: pointerdir
+           mountPath: /opt/datadog-agent/run
+        {{- end }}
+        {{- if .Values.datadog.useCriSocketVolume }}
+         - name: dockersocket
+           mountPath: /var/run/docker.sock
+        {{- end }}
+         - name: procdir
+           mountPath: /host/proc
+           readOnly: true
+         - name: cgroups
+           mountPath: /host/sys/fs/cgroup
+           readOnly: true
+         - name: dsdsocket
+           mountPath: /var/run/datadog
+         - name: datadog-yaml
+           mountPath: /etc/datadog-agent/datadog.yaml
+           subPath: datadog.yaml
+        {{- if (or (.Values.datadog.confd) (.Values.datadog.autoconf)) }}
+         - name: {{ template "datadog.fullname" . }}
+           mountPath: /conf.d
+           readOnly: true
+        {{- end }}
+        livenessProbe:
+          exec:
+           command:
+           - ./probe.sh
+          failureThreshold: 3
+          initialDelaySeconds: 15
+          periodSeconds: 5
+          successThreshold: 1
+          timeoutSeconds: 1
+      volumes:
+       - name: datadog-yaml
+         configMap:
+           name: {{ template "datadog.fullname" . }}
+       - name: {{ template "datadog.fullname" . }}
+         configMap:
+           name: {{ template "datadog.fullname" . }}
+           items:
+             - key: logs-config
+               path: logs.yaml
+      {{- if .Values.datadog.useCriSocketVolume }}
+       - hostPath:
+           path: /var/run/docker.sock
+         #  type: ""
+         name: dockersocket
+      {{- end }}
+       - hostPath:
+           path: /proc
+           type: ""
+         name: procdir
+       - hostPath:
+           path: /sys/fs/cgroup
+          # type: ""
+         name: cgroups
+       - hostPath:
+           path: /opt/datadog-agent/run
+          # type: ""
+         name: pointerdir
+       - hostPath:
+           path: /var/run/datadog/
+         name: dsdsocket
+  templateGeneration: 1
+  updateStrategy:
+    type: OnDelete
+
