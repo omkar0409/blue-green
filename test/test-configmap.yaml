@@ -1,0 +1,8 @@
+# This is a simple example of using a config map to create a single page static site.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: blue-green-configmap
+data:
+  # When the config map is mounted as a volume, these will be created as files.
+  index.html: "hello world"

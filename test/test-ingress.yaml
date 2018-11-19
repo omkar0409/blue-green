@@ -1,0 +1,13 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: blue-green-ingress
+spec:
+  rules:
+  - host: test.kopstest.ml
+    http:
+      paths:
+        - path: /
+          backend:
+            serviceName: service-prod
+            servicePort: 80

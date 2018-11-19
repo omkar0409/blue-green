@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deploy-httpd
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: httpds
+  template:
+    metadata:
+      labels:
+        app: httpds
+    spec:
+      containers:
+      - name: container-httpd
+        image: httpd:latest
+        ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-httpd
+ #   labels:
+ #   app: nginx
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+  selector:
+    app: httpds
+

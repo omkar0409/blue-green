@@ -1,0 +1,57 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DescribeInstances",
+        "ec2:DescribeRegions"
+      ],
+      "Resource": [
+        "*"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetBucketLocation",
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::clusters.kopstest.ml"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:Get*"
+      ],
+      "Resource": [
+        "arn:aws:s3:::clusters.kopstest.ml/apsouth1.kopstest.ml/addons/*",
+        "arn:aws:s3:::clusters.kopstest.ml/apsouth1.kopstest.ml/cluster.spec",
+        "arn:aws:s3:::clusters.kopstest.ml/apsouth1.kopstest.ml/config",
+        "arn:aws:s3:::clusters.kopstest.ml/apsouth1.kopstest.ml/instancegroup/*",
+        "arn:aws:s3:::clusters.kopstest.ml/apsouth1.kopstest.ml/pki/issued/*",
+        "arn:aws:s3:::clusters.kopstest.ml/apsouth1.kopstest.ml/pki/private/kube-proxy/*",
+        "arn:aws:s3:::clusters.kopstest.ml/apsouth1.kopstest.ml/pki/private/kubelet/*",
+        "arn:aws:s3:::clusters.kopstest.ml/apsouth1.kopstest.ml/pki/ssh/*",
+        "arn:aws:s3:::clusters.kopstest.ml/apsouth1.kopstest.ml/secrets/dockerconfig"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ecr:GetAuthorizationToken",
+        "ecr:BatchCheckLayerAvailability",
+        "ecr:GetDownloadUrlForLayer",
+        "ecr:GetRepositoryPolicy",
+        "ecr:DescribeRepositories",
+        "ecr:ListImages",
+        "ecr:BatchGetImage"
+      ],
+      "Resource": [
+        "*"
+      ]
+    }
+  ]
+}
