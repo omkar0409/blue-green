@@ -1,0 +1,15 @@
+green:
+  enabled: false
+
+blue:
+  enabled: false
+
+productionSlot: blue
+
+replicaCount: 1
+
+ingress:
+  hostname: productiontest.ml
+  stagehostname: stagetest.ml
+
+index: hello world
